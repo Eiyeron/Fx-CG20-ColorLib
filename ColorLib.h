@@ -17,20 +17,17 @@
 /** uncomment #define of functions you want to use **/
 /****************************************************/
 
-// #define CGL_ALL //Auto define all functions
+// #define CL_ALL //Auto define all functions
 
-// #define KEY
-// #define LINE
-// #define PIXEL
-// #define RANDOM
-// #define ABS
-// #define CIRCLE
-// #define TEXT
-// #define ALPHASPRITE
-// #define SPRITE16
-// #define SPRITE
-// #define INT2STR
-// #define FPS
+
+// #define CL_LINE
+// #define CL_PIXEL
+// #define CL_CIRCLE
+// #define CL_TEXT
+// #define CL_ALPHASPRITE
+// #define CL_SPRITE16
+// #define CL_SPRITE
+
 
 
 /**************************/
@@ -48,7 +45,7 @@
 typedef struct {
     char* data;
     int width, height, flags;
-} Font;
+} CL_font;
 
 /**************************/
 /** Flags                **/
@@ -62,28 +59,27 @@ typedef struct {
 /** Functions prototypes **/
 /**************************/
 
-int key_down(int basic_keycode);
 
-void line(int x1, int y1, int x2, int y2, short color);
+void CL_line(int x1, int y1, int x2, int y2, short color);
 
-void point(int x, int y, int color); 
+void CL_point(int x, int y, int color); 
 
-void text_setFont(Font* font);
+void CL_text_setFont(Font* font);
 
-Font* text_getActualFont();
+CL_font* CL_text_getActualFont();
 
-void text_printC(int x, int y, char c, int size, int color);
+void CL_text_printC(int x, int y, char c, int size, int color);
 
-void text_print(int x, int y, char* c, int size, int color);
+void CL_text_print(int x, int y, char* c, int size, int color);
 
-int text_widthC(char c);
+int CL_text_widthC(char c);
 
-int text_width(char* c);
+int CL_text_width(char* c);
 
-void alphaSprite(int x, int y, int width, int height, short* bitmap, short alpha);
+void CL_bmp_alpha(int x, int y, int width, int height, short* bitmap, short alpha);
 
-void CopySpriteMasked(short* bitmap, int x, int y, int width, int height, short mask);
+void CL_bmp_masked(short* bitmap, int x, int y, int width, int height, short mask);
 
-void CopySpriteNbitMasked(const unsigned char* data, int x, int y, int width, int height, const short* palette, short maskColor, unsigned int bitwidth);
+void CL_bmp_masked_nbit(const unsigned char* data, int x, int y, int width, int height, const short* palette, short maskColor, unsigned int bitwidth);
 #endif // COLORLIB
 

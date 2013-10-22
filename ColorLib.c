@@ -17,15 +17,15 @@
 /** Dependencies management  **/
 /******************************/
 
-#ifdef CGL_ALL
+#ifdef CL_ALL
 
-#define PIXEL
-#define LINE
-#define CIRCLE
-#define TEXT
-#define ALPHASPRITE
-#define SPRITE16
-#define SPRITE
+#define CL_PIXEL
+#define CL_LINE
+#define CL_CIRCLE
+#define CL_TEXT
+#define CL_ALPHASPRITE
+#define CL_SPRITE16
+#define CL_SPRITE
 
 #endif
 
@@ -35,9 +35,9 @@
 /***********************/
 
 
-#ifdef LINE
+#ifdef CL_LINE
 
-void line(int x1, int y1, int x2, int y2, short color)
+void CL_line(int x1, int y1, int x2, int y2, short color)
 {
     int i, x, y, dx, dy, sx, sy, cumul;
     x = x1;
@@ -81,11 +81,11 @@ void line(int x1, int y1, int x2, int y2, short color)
     }
 }
 
-#endif //LINE
+#endif //CL_LINE
 
-#ifdef PIXEL
+#ifdef CL_PIXEL
 
-void point(int x, int y, int color) 
+void CL_point(int x, int y, int color) 
 {
     char* VRAM = (char*)0xA8000000;
     VRAM += 2*(y*LCD_WIDTH_PX + x);
@@ -94,11 +94,11 @@ void point(int x, int y, int color)
     return;
 }
 
-#endif // PIXEL
+#endif // CL_PIXEL
 
-#ifdef CIRCLE
+#ifdef CL_CIRCLE
 
-void drawCircle(int x0, int y0, int rayon, int couleur)
+void CL_circle(int x0, int y0, int rayon, int couleur)
 {
     int er = 1 - rayon;
     int erY = 1;
@@ -132,9 +132,9 @@ void drawCircle(int x0, int y0, int rayon, int couleur)
     }
 }
 
-#endif // CIRCLE
+#endif // CL_CIRCLE
 
-#ifdef TEXT
+#ifdef CL_TEXT
 const static char default_data[] = {
     0,0,0,0,0,           // ' '
     128,128,128,0,128,   // '!'
@@ -233,7 +233,7 @@ const static char default_data[] = {
     0,0,80,160,0         // '~'
 };
 
-static Font default_font = {default_data, 5, 5, 0};
+static CL_font default_font = {default_data, 5, 5, 0};
 
 /*
    color on 32bits : 16 bits for alpha transparency + 16 bits for color.
@@ -246,10 +246,10 @@ example : 0x0010FFFF mean "white, 50% opacity"
 #define LCD_WIDTH_PX 384
 #define LCD_HEIGHT_PX 216
 #define VRAM 0xA8000000
-Font* used_font = &default_font;
+CL_font* used_font = &default_font;
 
 //private functions
-static void text_drawPoint(int x, int y, int size, int color, int alpha)
+static void CL_text_drawPoint(int x, int y, int size, int color, int alpha)
 {
     int i, j;
     short* vram = VRAM;
@@ -271,14 +271,14 @@ static void text_drawPoint(int x, int y, int size, int color, int alpha)
     }
 }
 
-static int text_readPix(char* data, int x, int y, int w, int h)
+static int CL_text_readPix(char* data, int x, int y, int w, int h)
 {
     int byte_width = ((w-1)>>3)+1;
     if(x<0 || x>=w || y<0 || y>=h) return 0;
     return 0 != (data[y*byte_width+(x>>3)] & (128>>(x&7)));
 }
 
-static void text_antialias(int x, int y, int size, int color, int alpha, int corner)
+static void CL_text_antialias(int x, int y, int size, int color, int alpha, int corner)
 {
     int i, j, m=size>>1;
     switch(corner) {
@@ -314,17 +314,17 @@ static void text_antialias(int x, int y, int size, int color, int alpha, int cor
 }
 
 //public functions
-void text_setFont(Font* font)
+void CL_text_setFont(Font* font)
 {
     used_font = font;
 }
 
-Font* text_getActualFont()
+CL_font* text_getActualFont()
 {
     return used_font;
 }
 
-void text_printC(int x, int y, char c, int size, int color)
+void CL_text_printC(int x, int y, char c, int size, int color)
 {
     int i, j, byte_width, alpha;
     char* data;
@@ -351,7 +351,7 @@ void text_printC(int x, int y, char c, int size, int color)
     }
 }
 
-void text_print(int x, int y, char* c, int size, int color)
+void CL_text_print(int x, int y, char* c, int size, int color)
 {
     int save_x = x;
     for( ; *c ; c++) {
@@ -365,7 +365,7 @@ void text_print(int x, int y, char* c, int size, int color)
     }
 }
 
-int text_widthC(char c)
+int CL_text_widthC(char c)
 {
     if(used_font->flags & MONOSPACE || c==' ') return used_font->width+1;
     unsigned char *data, col=0;
@@ -388,7 +388,7 @@ int text_widthC(char c)
     return width + 1;
 }
 
-int text_width(char* c)
+int CL_text_width(char* c)
 {
     int width = 0;
     for( ; *c ; c++) width += text_widthC(*c);
@@ -396,11 +396,11 @@ int text_width(char* c)
 }
 
 
-#endif //TEXT
+#endif //CL_TEXT
 
-#ifdef ALPHASPRITE
+#ifdef CL_ALPHASPRITE
 
-void alphaSprite(int x, int y, int width, int height, short* bitmap, short alpha)
+void CL_bmp_alpha(int x, int y, int width, int height, short* bitmap, short alpha)
 {
     short* VRAM = (short*)0xA8000000;
     int x_inc = width;
@@ -434,11 +434,11 @@ void alphaSprite(int x, int y, int width, int height, short* bitmap, short alpha
     }
 }
 
-#endif //ALPHASPRITE
+#endif //CL_ALPHASPRITE
 
-#ifdef SPRITE16
+#ifdef CL_SPRITE16
 
-void CopySpriteMasked(short* bitmap, int x, int y, int width, int height, short mask)
+void CL_bmp_masked(short* bitmap, int x, int y, int width, int height, short mask)
 {
     short* VRAM = (short*)0xA8000000;
 
@@ -452,11 +452,11 @@ void CopySpriteMasked(short* bitmap, int x, int y, int width, int height, short 
     }
 }
 
-#endif // SPRITE16
+#endif // CL_SPRITE16
 
-#ifdef SPRITE
+#ifdef CL_SPRITE
 
-void CopySpriteNbitMasked(const unsigned char* data, int x, int y, int width, int height, const short* palette, short maskColor, unsigned int bitwidth)
+void CL_bmp_masked_nbit(const unsigned char* data, int x, int y, int width, int height, const short* palette, short maskColor, unsigned int bitwidth)
 {
     short* VRAM = (short*)0xA8000000; //ou  color_t* VRAM = (color_t*) GetVRAMAddress();
     int offset = 0;
@@ -493,4 +493,4 @@ void CopySpriteNbitMasked(const unsigned char* data, int x, int y, int width, in
 }
 
 
-#endif // SPRITE
+#endif // CL_SPRITE
