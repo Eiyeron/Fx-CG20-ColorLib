@@ -1,0 +1,803 @@
+/******************************************************************/
+/*** ColorLib - Color graphic library for fx-CG 20 - fx-CG 10	***/
+/*** ColorLib is a free software								***/
+/***															***/
+/*** @author Lancelot											***/
+/***															***/
+/*** @file ColorLib.c											***/
+/*** Code file of ColorLib										***/
+/***															***/
+/*** @date 25 october 2013										***/
+/*** version 0.97												***/
+/******************************************************************/
+
+#include "colorLib3.h"
+
+
+/******************************/
+/** Dependencies management  **/
+/******************************/
+
+
+#ifdef CL_ALL
+
+// graphic functions:
+#define CL_PIXEL 
+//#define CL_PIXEL_ALPHA //error: unknown type name 'color_t'
+#define CL_POINT_ALPHA // warning*2
+#define CL_GET_PIXEL
+#define CL_LINE
+#define CL_VERTICAL_LINE
+#define CL_HORIZONTAL_LINE
+#define CL_FILLVRAM
+#define CL_CIRCLE
+#define CL_FILLED_CIRCLE // warning*2
+#define CL_FILLED_ALPHA_CIRCLE // warning
+#define CL_DISCUS
+#define CL_FILLED_RECTANGLE
+#define CL_POLY // warning
+#define CL_FILLED_POLYGON // warning*4
+
+// display sprite functions:
+#define CL_ALPHASPRITE
+#define CL_SPRITE16 // warning
+#define CL_SPRITE // warning
+
+// text functions:
+//#define CL_TEXT ne fonctionne pas !!!!!!!!!!(cf .h)
+
+#endif
+
+#ifdef CL_LINE
+
+#define CL_PIXEL
+
+#endif // CL_LINE
+
+#ifdef CL_CIRCLE
+
+#define CL_PIXEL
+
+#endif // CL_CIRCLE
+
+#ifdef CL_FILLED_CIRCLE
+
+#define CL_PIXEL
+
+#endif // CL_FILLED_CIRCLE
+
+#ifdef CL_FILLED_ALPHA_CIRCLE
+
+#define CL_POINT_ALPHA
+
+#endif // CL_FILLED_ALPHA_CIRCLE
+
+#ifdef CL_DISCUS
+
+#define CL_PIXEL
+
+#endif // CL_DISCUS
+
+#ifdef CL_POLY
+
+#define CL_LINE
+
+#define CL_PIXEL
+
+#endif // CL_POLY
+
+#ifdef CL_FILLED_POLYGON
+
+#define CL_HORIZONTAL_LINE
+
+#endif // CL_FILLED_POLYGON
+/***********************/
+/****   Functions   ****/
+/***********************/
+
+void* GetVRAMAdress()
+ {
+     asm("mov.l syscall_adress, r2n"
+         "mov.l getVRAM, r0n"
+         "jmp @r2n"
+         "nopn"
+         "syscall_adress: .long 0x80020070n"
+         "getVRAM: .long 0x01E6");
+ }		// warning: control reaches end of non-void function [-Wreturn-type]
+
+ 
+/******************************/
+/** graphic functions:       **/
+/******************************/
+
+#ifdef CL_PIXEL
+
+void CL_Pixel(int x, int y, unsigned short color)
+{
+   char* VRAM = (char*)0xA8000000;
+   VRAM += 2*(y*LCD_WIDTH_PX + x);
+   *(VRAM++) = (color&0x0000FF00)>>8;
+   *(VRAM++) = (color&0x000000FF);
+   return;
+}
+
+#endif // CL_PIXEL
+
+/**** //error: unknown type name 'color_t'
+
+#ifdef CL_PIXEL_ALPHA       
+ 
+SetPixelAlpha(int x, int y, color_t color, char alpha) {
+     if(x>=0 && x<LCD_WIDTH_PX && y>=0 && y<LCD_HEIGHT_PX) {
+         color_t * base = y * LCD_WIDTH_PX + x + GetVRAMAddress();
+         alpha %= 32;
+         *base = ((((color & 0xF81F) * alpha + (*base & 0xF81F) * (32-alpha)) >> 5) & 0xF81F) |
+             ((((color & 0x07E0) * alpha + (*base & 0x07E0) * (32-alpha)) >> 5) & 0x07E0);
+     }
+ }
+ 
+#endif // CL_PIXEL_ALPHA
+
+****/
+
+#ifdef CL_POINT_ALPHA
+
+void CL_PointAlpha(int x, int y, int size, int color, int alpha)
+ {
+      int i, j;
+      short* VRAM = (short*)GetVRAMAdress;
+      if(x+size>=LCD_WIDTH_PX || x<0 || y+size>=LCD_HEIGHT_PX || y<0) return;
+      VRAM += y*LCD_WIDTH_PX + x;
+      if(alpha == 32) {
+          for(i=size ; i ; i--, VRAM+=LCD_WIDTH_PX-size) {
+              for(j=size ; j ; j--) {
+                  *(VRAM++) = color;
+              }
+          }
+      } else {
+          for(i=size ; i ; i--, VRAM+=LCD_WIDTH_PX-size) {
+              for(j=size ; j ; j--) {
+                  *(VRAM++) = ((((color & 0xf81f) * alpha + (*VRAM & 0xf81f) * (32-alpha)) >> 5) & 0xf81f) |
+                              ((((color & 0x07e0) * alpha + (*VRAM & 0x07e0) * (32-alpha)) >> 5) & 0x07e0);
+              }/**warning: operation on 'VRAM' may be undefined**/
+          }
+      }
+ }
+
+#endif // CL_POINT_ALPHA
+
+#ifdef CL_GET_PIXEL
+
+short CL_Getpixel(short x, short y) 
+ {
+     short *VRAM = GetVRAMAdress();
+     return *(VRAM + (y * LCD_WIDTH_PX) + x);
+ }
+
+#endif // CL_GET_PIXEL
+
+#ifdef CL_LINE
+
+void CL_Line(int x1, int y1, int x2, int y2, unsigned short color)
+{
+	int dx,dy,i,xinc,yinc,cumul,x,y;
+	x = x1;
+	y = y1;
+	dx = x2 - x1;
+	dy = y2 - y1;
+	xinc = ( dx > 0 ) ? 1 : -1;
+	yinc = ( dy > 0 ) ? 1 : -1;
+	dx = abs(dx);
+	dy = abs(dy);
+	CL_Pixel( x, y, color);
+	if ( dx > dy ) 
+	{
+		cumul = dx >>1; // dy/2
+		for ( i = 1; i <= dx; i++ ) 
+		{
+			x += xinc;
+			cumul += dy;
+			if (cumul >= dx) 
+			{
+				cumul -= dx;
+				y += yinc;
+			}
+			CL_Pixel( x, y, color);
+		} 
+	}
+    else
+	{
+		cumul = dy >>2;// dy/2
+		for ( i = 1; i <= dy; i++ )
+		{
+			y += yinc;
+			cumul += dx;
+			if ( cumul >= dy )
+			{
+				cumul -= dy;
+				x += xinc;
+			}
+			CL_Pixel( x, y, color);
+		}
+	}
+}
+
+#endif // CL_LINE
+
+#ifdef CL_VERTICAL_LINE
+
+void CL_Vertical_Line(int x, int y1, int y2, unsigned short color)
+ {
+         unsigned short* VRAM = GetVRAMAdress();
+         int i;
+         int yi = max(min(y1,y2),0);
+         int yf = min(max(y1,y2),LCD_HEIGHT_PX);
+         if(x < 0 || x > LCD_WIDTH_PX) return;
+         for(i=yi; i <= yf; i++)
+                 VRAM[LCD_WIDTH_PX*i + x] = color;
+ }
+
+#endif // CL_VERTICAL_LINE
+
+#ifdef CL_HORIZONTAL_LINE
+
+void CL_Horizontal_Line(int x1, int x2, int y, unsigned short color)
+ {
+     unsigned short* VRAM = GetVRAMAdress();
+     int i;
+     int xi = max(min(x1,x2),0);
+     int xf = min(max(x1,x2),LCD_WIDTH_PX);
+     if(y < 0 || y > LCD_HEIGHT_PX) return;
+     for(i=xi; i <= xf; i++)
+     VRAM[LCD_WIDTH_PX*y + i] = color;
+ }
+
+#endif // CL_HORIZONTAL_LINE
+
+#ifdef CL_FILLVRAM
+
+void CL_FillVRAM(short color)
+{
+	int i, color32bits, *VRAM = GetVRAMAdress();
+	color32bits = (color<<16) | color;
+	for(i=LCD_WIDTH_PX*LCD_HEIGHT_PX/2 ; i ; i--)
+		*(VRAM++) = color32bits;
+}
+
+#endif // CL_FILLVRAM
+
+#ifdef CL_CIRCLE
+
+void CL_circle(int x0, int y0, int rayon, int couleur)
+{
+    int er = 1 - rayon;
+    int erY = 1;
+    int erX = -2 * rayon;
+    int x = rayon, y = 0;
+
+
+    CL_Pixel(x0, y0 + rayon, couleur);
+    CL_Pixel(x0, y0 - rayon, couleur);
+    CL_Pixel(x0 + rayon, y0, couleur);
+    CL_Pixel(x0 - rayon, y0, couleur);
+
+
+    while(y < x)
+    {
+        if(er > 0)
+        {
+            x--;
+            erX += 2;
+            er += erX;
+        }
+        y++;
+        erY += 2;
+        er += erY;    
+        CL_Pixel(x0 + x, y0 + y, couleur);
+        CL_Pixel(x0 - x, y0 + y, couleur);
+        CL_Pixel(x0 + x, y0 - y, couleur);
+        CL_Pixel(x0 - x, y0 - y, couleur);
+        CL_Pixel(x0 + y, y0 + x, couleur);
+        CL_Pixel(x0 - y, y0 + x, couleur);
+        CL_Pixel(x0 + y, y0 - x, couleur);
+        CL_Pixel(x0 - y, y0 - x, couleur);
+    }
+}
+
+
+#endif // CL_CIRCLE
+
+#ifdef CL_FILLED_CIRCLE
+
+void CL_FilledCircle(short x, short y, short rayon, int couleur)
+ {
+     int x1=0, y1=y-rayon;
+     while (y1<(y+rayon))
+     {
+         x1=x-rayon;
+         y1++;
+         while (x1<(x+rayon))
+         {
+             if(pow(x1-x, 2) + pow(y1-y, 2) < pow(rayon, 2))/*warning: implicit declaration of function 'pow' [-Wimplicit-function-declaration] warning: incompatible implicit declaration of built-in function 'pow' [enabled by default]*/
+             { 
+                 CL_Pixel(x1, y1, couleur);
+             }
+             x1++;
+         }
+     }
+ }
+
+#endif // CL_FILLED_CIRCLE
+
+#ifdef CL_FILLED_ALPHA_CIRCLE
+
+void CL_FilledCircleAlpha(short x, short y, short rayon, int couleur, int alpha)
+ {
+     int x1=0, y1=y-rayon;
+     while (y1<(y+rayon))
+     {
+         x1=x-rayon;
+         y1++;
+         while (x1<(x+rayon))
+         {
+             if(pow(x1-x, 2) + pow(y1-y, 2) < pow(rayon, 2))/*warning: incompatible implicit declaration of built-in function 'pow' [enabled by default]*/
+             { 
+                 CL_PointAlpha(x1, y1, 1, couleur, alpha);
+             }
+             x1++;
+         }
+     }
+ }
+
+#endif // CL_FILLED_ALPHA_CIRCLE
+
+#ifdef CL_DISCUS
+
+void CL_Discus(int x0, int y0, int rayon, int couleur)
+ {
+      int k;
+      int x,y,d;
+      for (k=0; k <= rayon; k++)
+      {
+          x = 0;
+          y = k;
+          d = k - 1;
+          while (y >= x) 
+          {
+              CL_Pixel( x0 + x, y0 + y, couleur);
+              CL_Pixel( x0 + y, y0 + x, couleur);
+              CL_Pixel( x0 - x, y0 + y, couleur);
+              CL_Pixel( x0 - y, y0 + x, couleur);
+              CL_Pixel( x0 + x, y0 - y, couleur);
+              CL_Pixel( x0 + y, y0 - x, couleur);
+              CL_Pixel( x0 - x, y0 - y, couleur);
+              CL_Pixel( x0 - y, y0 - x, couleur);
+              if (d >= 2*x)
+              {          
+                  d -=2*x+1;
+                  x++;
+              }
+              else if (d < 2*(k-y))
+              {
+                  d += 2*y-1;
+                  y--;
+              }
+              else
+              {
+                  d += 2*(y-x-1);
+                  y--;
+                  x++;
+              }
+          }
+      }
+ }
+
+#endif // CL_DISCUS
+
+#ifdef CL_POLY
+
+void CL_Poly(int xy[], int points, int color)
+ {
+      int i;
+      for(i = 0; i < (points*2); i+=2)
+      {
+          if(i < (points*2)-4)
+          {
+              CL_line(xy[i ], xy[i+1], xy[i+2], xy[i+3], color);/*warning: implicit declaration of function 'CL_line' [-Wimplicit-function-declaration]*/
+          } else 
+          {
+              CL_line(xy[i ], xy[i+1], xy[0], xy[1], color);/*cette erreur ne se retrouve pas ici étrange, non ?*/
+          }
+      }
+ }
+
+#endif // CL_POLY
+
+#ifdef CL_FILLED_POLYGON
+
+int CL_Filled_polygon_quicksord_partition(int *t, int p, int r) 
+ {
+     int i, j, x, tmp;
+     j = p - 1;
+     x = t[r];
+     for(i=p ; i<r ; i++)
+     {
+         if(x > t[i ])
+         {
+             j++;
+             tmp = t[j];
+             t[j] = t[i ];
+             t[i ] = tmp;
+         }
+     }
+     t[r] = t[j+1];
+     t[j+1] = x;
+     return j + 1;
+ }
+ 
+void CL_Filled_polygon_quicksord(int* t, int p, int r)
+ {
+     int q;
+     if(p < r)
+     {
+         q = CL_Filled_polygon_quicksord_partition(t, p, r);
+         CL_Filled_polygon_quicksord(t, p, q-1);
+         CL_Filled_polygon_quicksord(t, q+1, r);
+     }
+ }
+
+
+void CL_Filled_polygon(const int *x, const int *y, int nb_vertices, unsigned short color)
+ {
+     int i, j, dx, dy, ymin, ymax;
+     int *cut_in_line, nb_cut;
+     if(nb_vertices < 3) return;
+     cut_in_line = malloc(nb_vertices*sizeof(int)); //implicit declaration of function 'malloc' [-Wimplicit-function-declaration]  incompatible implicit declaration of built-in function 'malloc' [enabled by default]
+     if(!cut_in_line) return;
+     ymin = ymax = y[0];
+     for(i=1 ; i<nb_vertices ; i++)
+     {
+         if(y[i ] < ymin) ymin = y[i ];
+         if(y[i ] > ymax) ymax = y[i ];
+     }
+     for(i=ymin ; i<=ymax ; i++)
+     {
+         nb_cut = 0;
+         for(j=0 ; j<nb_vertices ; j++)
+         {
+             if((y[j]<=i && y[(j+1)%nb_vertices]>=i) || (y[j]>=i && y[(j+1)%nb_vertices]<=i))
+             {
+                 dy = abs(y[j]-y[(j+1)%nb_vertices]);
+                 if(dy)
+                 {
+                     dx = x[(j+1)%nb_vertices]-x[j];
+                     cut_in_line[nb_cut] = x[j] + /*random*/(abs(i-y[j]+sgn(i-y[j])/2)*dx/dy);
+                 }
+             }
+         }
+         CL_Filled_polygon_quicksord(cut_in_line, 0, nb_cut-1);
+         j = 0;
+         while(j<nb_cut-2 && cut_in_line[j]==cut_in_line[j+1]) j++;
+         while(j < nb_cut)
+         {
+             if(j == nb_cut-1) CL_Horizontal_Line(cut_in_line[j-1]+1, cut_in_line[j], i, color);
+             else
+             {
+                 dx = 1;
+                 while(j+dx<nb_cut-1 && cut_in_line[j+dx]==cut_in_line[j+dx+1]) dx++;
+                 CL_Horizontal_Line(cut_in_line[j], cut_in_line[j+dx], i, color);
+                 j += dx;
+             }
+             j++;
+         }
+     }
+     free(cut_in_line);//warning: implicit declaration of function 'free' [-Wimplicit-function-declaration]  warning: incompatible implicit declaration of built-in function 'free' [enabled by default]
+ }
+
+#endif // CL_FILLED_POLYGON
+
+#ifdef CL_FILLED_RECTANGLE
+
+void CL_Filled_Rectangle( int xi, int yi, int xi2, int yi2, unsigned short color)
+ {
+          unsigned short* VRAM = GetVRAMAdress();
+          int i,j;
+          const int x = max(0,min(xi,xi2));
+          const int x2 = min( LCD_WIDTH_PX,max(xi,xi2));
+          
+          const int y = max(0,min(yi,yi2));
+          const int y2 = min( LCD_WIDTH_PX,max(yi,yi2));
+          
+          const int xm = max(x,x2);
+          const int ym = max(y,y2);
+          
+          const int xe = x2-x+1;
+          
+          VRAM += LCD_WIDTH_PX*y + x;
+          for(j = min(y,y2); j <= ym; j++) {
+                  for(i=min(x,x2); i <= xm; i++) {
+                          *(VRAM++) = color;
+                  }
+                  VRAM += LCD_WIDTH_PX-xe;
+          }
+ }
+
+#endif // CL_FILLED_RECTANGLE
+
+
+/*******************************/
+/** display sprite functions: **/
+/*******************************/
+
+#ifdef CL_ALPHASPRITE
+
+void CL_bmp_alpha(int x, int y, int width, int height, short* bitmap, short alpha)
+{
+    short* VRAM = (short*)0xA8000000;
+    int x_inc = width;
+    if (y < 0)
+    {
+        bitmap -= y * width;
+        height += y;
+        y = 0;
+    }
+    if (height > 216 - y) height = 216 - y;
+
+
+    if (x < 0)
+    {
+        bitmap -= x;
+        width += x;
+        x = 0;
+    }
+    if (width > 128*3 - x) width = 128*3 - x;
+
+
+    x_inc -= width;
+
+
+    int y_index;
+    int x_index;
+    short * base = y * 128*3 + x + VRAM;
+    for (y_index = height; y_index > 0; y_index--, base += 128*3 - width, bitmap += x_inc)
+    {
+        for (x_index = width; x_index > 0; x_index--, base++ , bitmap++ )
+        {
+            if (*bitmap!=alpha && *bitmap!= 0xffff) *base = *bitmap;
+        }
+    }
+}
+
+
+#endif //CL_ALPHASPRITE
+
+#ifdef CL_SPRITE16
+
+
+void CL_bmp_masked(short* bitmap, int x, int y, int width, int height, short mask)
+{
+    short* VRAM = (short*)0xA8000000;
+
+    int y_index;
+    int x_index;
+    short * base = y * 128*3 + x + VRAM;
+    for (y_index = height; y_index > 0; --y_index, base += 128*3 - width) {
+        for (x_index = width; x_index > 0; --x_index, ++base, ++bitmap) {
+            if (*bitmap != mask) *base = *bitmap;
+        }
+    }
+}
+
+
+#endif // CL_SPRITE16
+
+#ifdef CL_SPRITE
+
+
+void CL_bmp_masked_nbit(const unsigned char* data, int x, int y, int width, int height, const short* palette, short maskColor, unsigned int bitwidth)
+{
+    short* VRAM = (short*)0xA8000000; //ou  color_t* VRAM = (color_t*) GetVRAMAddress();
+    int offset = 0;
+    int availbits ;
+    int j,i;
+    unsigned char buf;
+    short thiss;
+    short color;
+
+
+    VRAM += (128*3*y + x);
+    for(j=y; j<y+height; j++)
+    {
+        availbits = 0;
+
+
+        for(i=x; i<x+width;  i++)
+        {
+            if (!availbits)
+            {
+                buf = data[offset++];
+                availbits = 8;
+            }
+            thiss = ((short)buf>>(8-bitwidth));//warning: 'buf' may be used uninitialized in this function [-Wuninitialized]
+            color = palette[thiss];
+            if(color != maskColor && i >= 0 && i<384)
+            {
+                *VRAM = color;
+            }
+            VRAM++;
+            buf<=bitwidth; // warning: statement with no effect [-Wunused-value]
+            availbits-=bitwidth;
+        }
+        VRAM += (128*3-width);
+    }
+}
+
+
+
+
+#endif // CL_SPRITE
+
+/******************************/
+/** text functions:          **/
+/******************************/
+
+/*** ne fonctionne pas
+#ifdef CL_TEXT
+
+//Local variables
+#define LCD_WIDTH_PX 384
+#define LCD_HEIGHT_PX 216
+#define VRAM 0xA8000000
+Font* used_font = &default_font;
+
+//private functions
+static void text_drawPoint(int x, int y, int size, int color, int alpha)
+{
+	int i, j;
+	short* vram = VRAM;
+	if(x+size>=LCD_WIDTH_PX || x<0 || y+size>=LCD_HEIGHT_PX || y<0) return;
+	vram += y*LCD_WIDTH_PX + x;
+	if(alpha == 32) {
+		for(i=size ; i ; i--, vram+=LCD_WIDTH_PX-size) {
+			for(j=size ; j ; j--) {
+				*(vram++) = color;
+			}
+		}
+	} else {
+		for(i=size ; i ; i--, vram+=LCD_WIDTH_PX-size) {
+			for(j=size ; j ; j--) {
+				*(vram++) = ((((color & 0xf81f) * alpha + (*vram & 0xf81f) * (32-alpha)) >> 5) & 0xf81f) |
+							((((color & 0x07e0) * alpha + (*vram & 0x07e0) * (32-alpha)) >> 5) & 0x07e0);
+			}
+		}
+	}
+}
+
+static int text_readPix(char* data, int x, int y, int w, int h)
+{
+	int byte_width = ((w-1)>>3)+1;
+	if(x<0 || x>=w || y<0 || y>=h) return 0;
+	return 0 != (data[y*byte_width+(x>>3)] & (128>>(x&7)));
+}
+
+static void text_antialias(int x, int y, int size, int color, int alpha, int corner)
+{
+	int i, j, m=size>>1;
+	switch(corner) {
+		case 0: //top left
+			for(i=0 ; i<size-m ; i++) {
+				for(j=0 ; j<size-i-m-1 ; j++)
+					text_drawPoint(x+j, y+i, 1, color, alpha);
+				text_drawPoint(x+j, y+i, 1, color, alpha>>1);
+			}
+			break;
+		case 1: //top right
+			for(i=0 ; i<size-m ; i++) {
+				text_drawPoint(x+i+m, y+i, 1, color, alpha>>1);
+				for(j=i+m+1 ; j<size ; j++)
+					text_drawPoint(x+j, y+i, 1, color, alpha);
+			}
+			break;
+		case 2: //bottom left
+			for(i=m ; i<size ; i++) {
+				for(j=0 ; j<i-m ; j++)
+					text_drawPoint(x+j, y+i, 1, color, alpha);
+				text_drawPoint(x+j, y+i, 1, color, alpha>>1);
+			}
+			break;
+		case 3: //bottom right
+			for(i=m-1 ; i<size ; i++) {
+				text_drawPoint(x+size-i+m-1, y+i, 1, color, alpha>>1);
+				for(j=size-i+m ; j<size ; j++)
+					text_drawPoint(x+j, y+i, 1, color, alpha);
+			}
+			break;
+	}
+}
+
+//public functions
+void text_setFont(Font* font)
+{
+	used_font = font;
+}
+
+Font* text_getActualFont()
+{
+	return used_font;
+}
+
+void text_printC(int x, int y, char c, int size, int color)
+{
+	int i, j, byte_width, alpha;
+	char* data;
+	if(c<32 || c>127 || size<1) return;
+	byte_width = ((used_font->width-1)>>3)+1;
+	data = used_font->data + byte_width * used_font->height * (c-32);
+	alpha = 32 - ((color>>16) % 32);
+	color &= 0xFFFF;
+	for(i=0 ; i<used_font->height ; i++) {
+		for(j=0 ; j<used_font->width ; j++) {
+			if(data[i*byte_width+(j>>3)] & (128>>(j&7)))
+				text_drawPoint(x+j*size, y+i*size, size, color, alpha);
+			else if(used_font->flags & ANTIALIASING) { // Antialiasing
+				if(text_readPix(data, j, i-1, used_font->width, used_font->height)) {
+					if(text_readPix(data, j-1, i, used_font->width, used_font->height)) text_antialias(x+j*size, y+i*size, size, color, alpha, 0);
+					if(text_readPix(data, j+1, i, used_font->width, used_font->height)) text_antialias(x+j*size, y+i*size, size, color, alpha, 1);
+				}
+				if(text_readPix(data, j, i+1, used_font->width, used_font->height)) {
+					if(text_readPix(data, j-1, i, used_font->width, used_font->height)) text_antialias(x+j*size, y+i*size, size, color, alpha, 2);
+					if(text_readPix(data, j+1, i, used_font->width, used_font->height)) text_antialias(x+j*size, y+i*size, size, color, alpha, 3);
+				}
+			}
+		}
+	}
+}
+
+void text_print(int x, int y, char* c, int size, int color)
+{
+	int save_x = x;
+	for( ; *c ; c++) {
+		if(*c == '\n') {
+			x = save_x;
+			y += (used_font->height + used_font->height/2) * size;
+		} else {
+			text_printC(x, y, *c, size, color);
+			x += size * text_widthC(*c);
+		}
+	}
+}
+
+int text_widthC(char c)
+{
+	if(used_font->flags & MONOSPACE || c==' ') return used_font->width+1;
+	unsigned char *data, col=0;
+	int i, j, byte_width, width;
+	byte_width = ((used_font->width-1)>>3)+1;
+	width = 8 * byte_width;
+	data = used_font->data + byte_width * used_font->height * (c-32);
+	for(j=byte_width-1 ; j>=0 && !col ; j--) {
+		col = 0;
+		for(i=0 ; i<used_font->height ; i++) {
+			col |= data[i*byte_width + j];
+		}
+		if(col) {
+			while(!(col&1)) {
+				col>>=1;
+				width--;
+			}
+		} else width -= 8;
+	}
+	return width + 1;
+}
+
+int text_width(char* c)
+{
+	int width = 0;
+	for( ; *c ; c++) width += text_widthC(*c);
+	return width;
+}
+
+#endif // CL_TEXT
+
+*****/
+
